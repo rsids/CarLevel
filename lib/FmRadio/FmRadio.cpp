@@ -1,21 +1,23 @@
 #include <Wire.h>
 #include <Arduino.h>
-#include "FmRadio.h"
 #include <EEPROM.h>
 #include <math.h>
+#include "FmRadio.h"
 
 const int TEA_ADDR = 0x60;
-const int WRITE_MODE = 0x61;
-const int READ_MODE = 0x60;
-const int MAX_COUNTS = 6400000;
+const int STORE_TIMEOUT = 6400000;
+const int SCAN_TIMEOUT_LONG = 6400000;
+const int SCAN_TIMEOUT_SHORT = 5000;
 
 const double fIF = 225 * pow(10, 3);
 
-int signalStrength = 0;
+int scanTimeout = SCAN_TIMEOUT_LONG;
 int snc = 2;
-unsigned int counter = 0;
+unsigned int storeCounter = 0;
+unsigned int scanCounter = 0;
 unsigned int pll = 0;
 int pllFromEeprom = 0;
+std::vector<byte> response = {0, 0, 0, 0, 0};
 
 void FmRadio::setup()
 {
@@ -28,100 +30,68 @@ void FmRadio::setup()
 
 void FmRadio::loop()
 {
-    if (++counter == MAX_COUNTS)
+    if (++storeCounter == STORE_TIMEOUT)
     {
-        FmRadio::store();
+        store();
+    }
+
+    scanCounter++;
+    if (scanCounter == scanTimeout)
+    {
+        i2cRead();
+        scanCounter = 0;
+        if (stationFound())
+        {
+            scanTimeout = SCAN_TIMEOUT_LONG;
+        }
     }
 }
 
-void FmRadio::setFrequency(double mhz)
+bool FmRadio::bandLimitReached()
 {
-    counter = 0;
-    int pll = MhzToPLL(mhz);
-    byte a, b;
-    a = pll >> 8;
-    b = pll & 0xFF;
-    i2cWrite(a, b, 0x10, 0x10, 0x40);
+    return response[0] & (1 << 6);
 }
 
-void FmRadio::scanUp(double mhz)
+void FmRadio::disableStereoNoiceCancceling()
 {
-    scan(mhz, true);
-}
-void FmRadio::scanDown(double mhz)
-{
-    scan(mhz, false);
+    snc = 0;
 }
 
-void FmRadio::scan(double mhz, bool dir)
+void FmRadio::enableStereoNoiceCancceling()
 {
-    counter = 0;
-    int pll = MhzToPLL(mhz);
-    byte a, b, c;
-    a = 0x40 | (pll >> 8);
-    b = pll & 0xFF;
-    c = 0x70 | (dir << 7);
-    // Serial.println(a, HEX);
-    // Serial.println(a, HEX);
-    // Serial.println(c, HEX);
-    i2cWrite(a, b, c, 0x10 | snc, 0x40);
+    snc = 2;
 }
 
-void FmRadio::store()
+std::vector<byte> FmRadio::getData()
 {
-    if (pll != pllFromEeprom)
-    {
-        EEPROM.begin(4);
-        Serial.print("Storing freq into db ");
-        Serial.println(pll);
-        EEPROM.writeInt(0, pll);
-        EEPROM.commit();
-        EEPROM.end();
-    }
+    return response;
 }
 
 double FmRadio::getFrequency()
 {
-    Wire.requestFrom(TEA_ADDR, 5);
-    byte a = Wire.read();
-    byte b = Wire.read();
-    byte c = Wire.read();
-    byte d = Wire.read();
-    // byte e = Wire.read();
-    // Strip off first two bits, add byte b
-    pll = (a & 0x3f) << 8 | b;
-    bool found = a & (1 << 7);
-    bool blf = a & (1 << 6);
-    // Serial.print("Found: ");
-    // Serial.print(found);
-    // Serial.print(" / BLF: ");
-    // Serial.println(blf);
-    // Serial.println("*****");
-    // Serial.println(c, BIN);
-    // Serial.println(d, BIN);
-    if (!found)
-    {
-        signalStrength = 0;
-        return 0.0;
-    }
-    signalStrength = ((d & 0xf0) >> 4);
-    // Serial.println(a, HEX);
-    // Serial.println(b, HEX);
-    // Serial.println(c, HEX);
-    // Serial.println(d, HEX);
-    // Serial.println(e, HEX);
-    // Serial.println("------");
     return PLLToMhz(pll);
-}
-
-int FmRadio::MhzToPLL(double mhz)
-{
-    return floor((4 * ((mhz * pow(10, 6) + fIF))) / 32768);
 }
 
 int FmRadio::getSignalStrength()
 {
-    return signalStrength;
+    return response[3] >> 4;
+}
+
+bool FmRadio::isStereo()
+{
+    return response[2] >> 7;
+}
+
+void FmRadio::i2cRead()
+{
+    Wire.requestFrom(TEA_ADDR, 5);
+    for (int i = 0; i < 5; i++)
+    {
+        response[i] = Wire.read();
+    }
+
+    // Strip off first two bits, add byte b
+    pll = (response[0] & 0x3f) << 8 | response[1];
 }
 
 void FmRadio::i2cWrite(byte a, byte b, byte c, byte d, byte e)
@@ -133,19 +103,63 @@ void FmRadio::i2cWrite(byte a, byte b, byte c, byte d, byte e)
     Wire.write(d);
     Wire.write(e);
     Wire.endTransmission();
+
+    storeCounter = 0;
+    scanCounter = 0;
+    scanTimeout = SCAN_TIMEOUT_SHORT;
 }
 
-double FmRadio::PLLToMhz(int pll)
+void FmRadio::scan(double mhz, bool dir)
 {
-    double fPll = pll * 1.0;
+    byte a, b, c;
+    a = 0x40 | (pll >> 8);
+    b = MhzToPLL(mhz) & 0xFF;
+    c = 0x70 | (dir << 7);
+    i2cWrite(a, b, c, 0x10 | snc, 0x40);
+}
+
+void FmRadio::scanDown(double mhz)
+{
+    scan(mhz - .1, false);
+}
+
+void FmRadio::scanUp(double mhz)
+{
+    scan(mhz + .1, true);
+}
+
+void FmRadio::setFrequency(double mhz)
+{
+    int newPll = MhzToPLL(mhz);
+    byte a, b;
+    a = newPll >> 8;
+    b = newPll & 0xFF;
+    i2cWrite(a, b, 0x10, 0x10, 0x40);
+}
+
+bool FmRadio::stationFound()
+{
+    return (response[0] & (1 << 7));
+}
+
+void FmRadio::store()
+{
+    if (pll != pllFromEeprom)
+    {
+        EEPROM.begin(4);
+        EEPROM.writeInt(0, pll);
+        EEPROM.commit();
+        EEPROM.end();
+    }
+}
+
+int FmRadio::MhzToPLL(double mhz)
+{
+    return floor((4 * ((mhz * pow(10, 6) + fIF))) / 32768);
+}
+
+double FmRadio::PLLToMhz(int p)
+{
+    double fPll = p * 1.0;
     return ((fPll * 32768 / 4) - fIF) / pow(10, 6);
-}
-
-void FmRadio::enableStereoNoiceCancceling()
-{
-    snc = 2;
-}
-void FmRadio::disableStereoNoiceCancceling()
-{
-    snc = 0;
 }

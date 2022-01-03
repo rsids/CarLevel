@@ -5,6 +5,7 @@ class FmRadio
     int MhzToPLL(double mhz);
     double PLLToMhz(int pll);
     void scan(double mhz, bool dir);
+    void i2cRead();
     void i2cWrite(byte a, byte b, byte c, byte d, byte e);
 
 public:
@@ -19,6 +20,10 @@ public:
     void enableStereoNoiceCancceling();
     void disableStereoNoiceCancceling();
     void store();
+    bool bandLimitReached();
+    bool stationFound();
+    bool isStereo();
+    std::vector<byte> getData();
     double getFrequency();
     int getSignalStrength();
     // void scan();

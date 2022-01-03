@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include <Arduino.h>
+#include "utils.h"
 #include "LvlSensor.h"
 
 const int MPU_addr = 0x68;
@@ -12,6 +13,15 @@ double x;
 double y;
 double z;
 
+int pitches = 0;
+int rolls = 0;
+int loopCount = 0;
+int inclineCount = 0;
+int roll, pitch, incline;
+const int MAX_INCLINE_COUNT = 1000;
+const int MAX_COUNT = 100;
+float inclines[MAX_INCLINE_COUNT] = {};
+
 void LvlSensor::setup()
 {
     Wire.begin();
@@ -20,6 +30,53 @@ void LvlSensor::setup()
     Wire.write(0);
     Wire.endTransmission(true);
 }
+
+void LvlSensor::loop()
+{
+    calc();
+    int loopPitch = x;
+    if (loopPitch < 90)
+    {
+        loopPitch = 360 + loopPitch;
+    }
+
+    int loopRoll = y;
+    if (loopRoll < 90)
+    {
+        loopRoll = 360 + loopRoll;
+    }
+    pitches += loopPitch;
+    rolls += loopRoll;
+    loopCount++;
+    inclines[inclineCount] = loopPitch;
+    inclineCount++;
+    if (inclineCount == MAX_INCLINE_COUNT)
+    {
+        inclineCount = 0;
+    }
+    if (loopCount == MAX_COUNT)
+    {
+        pitches /= MAX_COUNT;
+        if (pitches > 360)
+        {
+            pitches -= 360;
+        }
+
+        rolls /= MAX_COUNT;
+        if (rolls > 360)
+        {
+            rolls -= 360;
+        }
+
+        pitch = clamp(pitches, -127, 127);
+        roll = clamp(rolls, -127, 127);
+        incline = clamp(getIncline(), -127, 127);
+        loopCount = 0;
+        pitches = 0;
+        rolls = 0;
+    }
+}
+
 void LvlSensor::calc()
 {
     Wire.beginTransmission(MPU_addr);
@@ -38,12 +95,27 @@ void LvlSensor::calc()
     z = RAD_TO_DEG * (atan2(-yAng, -xAng) + PI);
 }
 
-float LvlSensor::readPitch()
+float LvlSensor::getIncline()
 {
-    return x;
+    float incline = 0;
+    for (int i = 0; i < MAX_INCLINE_COUNT; i++)
+    {
+        incline += inclines[i];
+    }
+    return tan(deg2rad(incline / MAX_INCLINE_COUNT)) * 100;
 }
 
-float LvlSensor::readRoll()
+int LvlSensor::readPitch()
 {
-    return y;
+    return pitch;
+}
+
+int LvlSensor::readRoll()
+{
+    return roll;
+}
+
+int LvlSensor::readIncline()
+{
+    return incline;
 }

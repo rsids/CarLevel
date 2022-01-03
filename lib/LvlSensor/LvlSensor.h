@@ -2,12 +2,15 @@
 #define _LVL_SENSOR_
 class LvlSensor
 {
+    float getIncline();
 
 public:
     LvlSensor();
     void setup();
+    void loop();
     void calc();
-    float readPitch();
-    float readRoll();
+    int readPitch();
+    int readRoll();
+    int readIncline();
 };
 #endif

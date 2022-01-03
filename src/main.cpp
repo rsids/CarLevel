@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <BLEServer.h>
 #include <BLEDevice.h>
-#include <math.h>
 #include "utils.h"
 #include "LvlService.h"
 #include "FmRadio.h"
@@ -11,7 +10,7 @@
 #include <LiquidCrystal_I2C.h>
 
 bool deviceConnected = false;
-bool levelEnabled = false;
+bool levelEnabled = true;
 bool radioEnabled = true;
 
 class LevelBLEServerCallbacks : public BLEServerCallbacks
@@ -33,14 +32,17 @@ LvlSensor *lvlSensor;
 FmRadio *fmRadio;
 Comm *comm;
 
-int loop_count = 0;
-int incline_count = 0;
-const int MAX_INCLINE_COUNT = 1000;
-const int MAX_COUNT = 100;
-float pitches = 0;
-float rolls = 0;
+const int OUTPUT_LEVEL = 0;
+const int OUTPUT_FM = 1;
+
+const int OUTPUT_LEVEL_INTERVAL = 10000;
+const int OUTPUT_FM_INTERVAL = 1000000;
+
+int output_mode = OUTPUT_LEVEL;
+int output_interval = OUTPUT_LEVEL_INTERVAL;
+int output_counter = 0;
+
 float frequency = 0.0;
-float inclines[MAX_INCLINE_COUNT] = {};
 
 //---------- TEST VARS
 bool isSeeking = false;
@@ -54,16 +56,6 @@ const int SEEK_TIMEOUT = 4000;
 int lcd_counter = 0;
 int seek_timeout = 0;
 //---------- END TEST VARS
-
-float getIncline()
-{
-  float incline = 0;
-  for (int i = 0; i < MAX_INCLINE_COUNT; i++)
-  {
-    incline += inclines[i];
-  }
-  return tan(deg2rad(incline / MAX_INCLINE_COUNT)) * 100;
-}
 
 void testSetup()
 {
@@ -82,6 +74,7 @@ void testLoop()
   int seekUpState = digitalRead(BTN_SEEK_UP);
   int mhzDownState = digitalRead(BTN_MHZ_DOWN);
   int mhzUpState = digitalRead(BTN_MHZ_UP);
+  levelEnabled = (mhzDownState == HIGH);
   isSeeking = seekDownState || seekUpState || mhzDownState || mhzUpState;
   if (isSeeking)
   {
@@ -105,7 +98,7 @@ void testLoop()
       }
       else if (mhzUpState == HIGH)
       {
-        fmRadio->setFrequency(frequency + 0.1);
+        // fmRadio->setFrequency(frequency + 0.1);
       }
     }
     else if (++seek_timeout == SEEK_TIMEOUT)
@@ -125,7 +118,6 @@ void setup()
   pinMode(2, OUTPUT);
   testSetup();
   Serial.begin(115200);
-  Serial.println("Start CarLevelFM");
   comm->setup();
   if (levelEnabled)
   {
@@ -135,8 +127,6 @@ void setup()
   if (radioEnabled)
   {
     fmRadio->setup();
-    // frequency = 97.5;
-    // fmRadio->setFrequency(frequency);
   }
 }
 
@@ -177,65 +167,43 @@ void loop()
       lcd.setCursor(0, 1);
       lcd.print("S: ");
       lcd.print(fmRadio->getSignalStrength());
+      lcd.print(fmRadio->isStereo() ? "[ S ]" : "[ M ]");
       // Serial.println(buffer);
-      Serial.print(".");
+      // Serial.print(".");
       lcd_counter = 0;
     }
   }
   if (levelEnabled)
   {
+    lvlSensor->loop();
+  }
 
-    lvlSensor->calc();
-    int pitch = lvlSensor->readPitch();
-    if (pitch < 90)
+  if (++output_counter == output_interval)
+  {
+    output_counter = 0;
+    // Write out data
+    if (output_mode == OUTPUT_LEVEL)
     {
-      pitch = 360 + pitch;
+      // Write out x / y / incline
+      int pitch = lvlSensor->readPitch();
+      int roll = lvlSensor->readRoll();
+      int incline = lvlSensor->readIncline();
+      Serial.write(pitch);
+      Serial.write(roll);
+      Serial.write(incline);
+      Serial.write(0);
+      Serial.write(0);
+      Serial.flush();
     }
-
-    int roll = lvlSensor->readRoll();
-    if (roll < 90)
+    else
     {
-      roll = 360 + roll;
-    }
-    pitches += pitch;
-    rolls += roll;
-    loop_count++;
-    inclines[incline_count] = pitch;
-    incline_count++;
-    if (incline_count == MAX_INCLINE_COUNT)
-    {
-      incline_count = 0;
-    }
-    if (loop_count == MAX_COUNT)
-    {
-      char buffer[14];
-      pitches /= MAX_COUNT;
-      if (pitches > 360)
+      // Pass through data from tea
+      std::vector<byte> bytes = fmRadio->getData();
+      for (int i = 0; i < 5; i++)
       {
-        pitches -= 360;
+        Serial.write(bytes[0]);
       }
-
-      rolls /= MAX_COUNT;
-      if (rolls > 360)
-      {
-        rolls -= 360;
-      }
-
-      pitches = clamp(pitches, -127, 127);
-      rolls = clamp(rolls, -127, 127);
-      float incline = clamp(getIncline(), -127, 127);
-
-      // sprintf(buffer, "%03.0f;%03.0f;%03.0f", pitches, rolls, incline);
-      // Serial.println(buffer);
-
-      if (deviceConnected)
-      {
-        bleServer->update(buffer);
-      }
-      loop_count = 0;
-      pitches = 0;
-      rolls = 0;
-      // delay(3); // stop the program for some time
+      Serial.flush();
     }
   }
   // }
