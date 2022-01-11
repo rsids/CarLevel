@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Arduino.h>
 #include "utils.h"
+#include <EEPROM.h>
 #include "LvlSensor.h"
 
 const int MPU_addr = 0x68;
@@ -22,6 +23,9 @@ const int MAX_INCLINE_COUNT = 1000;
 const int MAX_COUNT = 100;
 float inclines[MAX_INCLINE_COUNT] = {};
 
+static int8_t offsetX, offsetY;
+static bool invertX, invertY;
+
 void LvlSensor::setup()
 {
     Wire.begin();
@@ -29,6 +33,14 @@ void LvlSensor::setup()
     Wire.write(0x6B);
     Wire.write(0);
     Wire.endTransmission(true);
+
+    EEPROM.begin(5);
+    offsetX = EEPROM.readByte(2);
+    offsetY = EEPROM.readByte(3);
+    int inverted = EEPROM.readByte(3);
+    invertX = inverted & 2;
+    invertY = inverted & 1;
+    EEPROM.end();
 }
 
 void LvlSensor::loop()
@@ -81,7 +93,7 @@ void LvlSensor::calc()
 {
     Wire.beginTransmission(MPU_addr);
     Wire.write(0x3B);
-    Wire.endTransmission(false);
+    Wire.endTransmission(true);
     Wire.requestFrom(MPU_addr, 14);
     AcX = Wire.read() << 8 | Wire.read();
     AcY = Wire.read() << 8 | Wire.read();
@@ -105,17 +117,67 @@ float LvlSensor::getIncline()
     return tan(deg2rad(incline / MAX_INCLINE_COUNT)) * 100;
 }
 
-int LvlSensor::readPitch()
+int8_t LvlSensor::readPitch()
 {
     return pitch;
 }
 
-int LvlSensor::readRoll()
+int8_t LvlSensor::readRoll()
 {
     return roll;
 }
 
-int LvlSensor::readIncline()
+int8_t LvlSensor::readIncline()
 {
     return incline;
+}
+
+int8_t LvlSensor::getOffsetX()
+{
+    return offsetX;
+};
+
+int8_t LvlSensor::getOffsetY()
+{
+    return offsetY;
+};
+
+bool LvlSensor::isInvertedX()
+{
+    return invertX;
+};
+
+bool LvlSensor::isInvertedY()
+{
+    return invertY;
+};
+
+void LvlSensor::setOffsetX(int8_t offset)
+{
+    offsetX = offset;
+};
+
+void LvlSensor::setOffsetY(int8_t offset)
+{
+    offsetY = offset;
+};
+
+void LvlSensor::setInvertX(bool inverted)
+{
+    invertX = inverted;
+};
+
+void LvlSensor::setInvertY(bool inverted)
+{
+    invertY = inverted;
+};
+
+void LvlSensor::writeSettings()
+{
+    EEPROM.begin(5);
+    EEPROM.writeByte(2, getOffsetX());
+    EEPROM.writeByte(3, getOffsetY());
+    EEPROM.writeByte(4, isInvertedX() << 1 | isInvertedY());
+    EEPROM.commit();
+    EEPROM.end();
 }

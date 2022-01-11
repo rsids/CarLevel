@@ -10,7 +10,7 @@ class FmRadio
 
 public:
     FmRadio();
-    void setup();
+    void setup(int pin);
     void loop();
     void setFrequency(double mhz);
     void scanUp(double mhz);
@@ -20,6 +20,7 @@ public:
     void enableStereoNoiceCancceling();
     void disableStereoNoiceCancceling();
     void store();
+    void setSleep(int isSleeping);
     bool bandLimitReached();
     bool stationFound();
     bool isStereo();

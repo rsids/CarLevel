@@ -1,16 +1,21 @@
 /*********
   Rui Santos
-  Complete project details at https://randomnerdtutorials.com  
+  Complete project details at https://randomnerdtutorials.com
 *********/
 
 #include <Wire.h>
 #include <Arduino.h>
 
-void i2cAddressSetup()
+TwoWire I2C_scanner = TwoWire(0);
+
+void i2cAddressSetup(int SDA, int SCL, int BUS)
 {
-    Wire.begin();
+    I2C_scanner.begin(SDA, SCL, 100000);
     Serial.begin(115200);
-    Serial.println("\nI2C Scanner");
+    Serial.print("\nI2C Scanner ");
+    Serial.print(SDA);
+    Serial.print(" / ");
+    Serial.println(SCL);
 }
 
 void i2cAddressLoop()
@@ -21,8 +26,8 @@ void i2cAddressLoop()
     nDevices = 0;
     for (address = 1; address < 127; address++)
     {
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
+        I2C_scanner.beginTransmission(address);
+        error = I2C_scanner.endTransmission();
         if (error == 0)
         {
             Serial.print("I2C device found at address 0x");

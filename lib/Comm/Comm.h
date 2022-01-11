@@ -7,6 +7,15 @@ public:
     Comm();
     void setup();
     void loop();
-    // void get(char* result);
+    std::vector<byte> getRaw();
+    bool isLevelMode();
+    bool offsetRequested();
+    bool configChanged();
+    bool isInvertedX();
+    bool isInvertedY();
+    int8_t getOffsetX();
+    int8_t getOffsetY();
+    int8_t getOffsetIncline();
+    void sendData(std::vector<byte> data);
 };
 #endif
