@@ -69,16 +69,18 @@ void LvlSensor::loop()
     if (loopCount == MAX_COUNT)
     {
         pitches /= MAX_COUNT;
-        if (pitches > 360)
+        if (pitches > 180)
         {
             pitches -= 360;
         }
 
         rolls /= MAX_COUNT;
-        if (rolls > 360)
+        if (rolls > 180)
         {
             rolls -= 360;
         }
+
+        Serial.printf("pitches: %d, rolls: %d, incline: %d\n", pitches, rolls, getIncline());
 
         pitch = clamp(pitches, -127, 127);
         roll = clamp(rolls, -127, 127);
