@@ -13,7 +13,7 @@ static const byte CMD_SET_INVERT_Y = 1 << 2;
 static bool isLvlMode = true;
 static bool isOffsetRequested = false;
 static bool isConfigChanged = false;
-static bool invertedX, invertedY;
+static bool invertedX, invertedY, serialConnected;
 
 static byte dataBuffer[5];
 static int8_t offsetX, offsetY, offsetIncline;
@@ -28,6 +28,7 @@ void Comm::loop()
 {
     if (Serial.available() > 0)
     {
+        serialConnected = true;
         Serial.readBytes(dataBuffer, 5);
         byte cmd = dataBuffer[0];
         isLvlMode = cmd & MODE_LVL;
@@ -60,6 +61,11 @@ void Comm::loop()
 bool Comm::isLevelMode()
 {
     return isLvlMode;
+}
+
+bool Comm::isSerialConnected()
+{
+    return serialConnected;
 }
 
 bool Comm::offsetRequested()

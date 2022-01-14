@@ -8,6 +8,7 @@ public:
     void setup();
     void loop();
     std::vector<byte> getRaw();
+    bool isSerialConnected();
     bool isLevelMode();
     bool offsetRequested();
     bool configChanged();
