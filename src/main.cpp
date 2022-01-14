@@ -9,9 +9,9 @@
 #include "I2CAddress.h"
 
 bool deviceConnected = false;
-bool levelEnabled = true;
-bool radioEnabled = false;
-bool commEnabled = true;
+bool levelEnabled = false;
+bool radioEnabled = true;
+bool commEnabled = false;
 
 class LevelBLEServerCallbacks : public BLEServerCallbacks
 {
@@ -42,19 +42,20 @@ const int OUTPUT_FM_INTERVAL = 1000000;
 int output_mode = OUTPUT_LEVEL;
 int output_interval = OUTPUT_LEVEL_INTERVAL;
 int output_counter = 0;
+int lastDip = 8;
 
 float frequency = 0.0;
 
 //---------- TEST VARS
 bool isSeeking = false;
-const int OUTPUT_NPN = 32;
-const int BTN_SEEK_UP = 34;
-const int BTN_SEEK_DOWN = 35;
-const int BTN_MHZ_UP = 36;
-const int BTN_MHZ_DOWN = 39;
-const int BTN_DISABLE_LEVEL = 33;
+const int DIP_4 = 34;
+const int DIP_3 = 35;
+const int DIP_2 = 32;
+const int DIP_1 = 33;
 const int LCD_UPDATE_FREQ = 128000;
 const int SEEK_TIMEOUT = 4000;
+const int OUTPUT_NPN = 36;
+int dip = 0;
 int lcd_counter = 0;
 int seek_timeout = 0;
 int sleeping = 0;
@@ -62,78 +63,105 @@ int sleeping = 0;
 
 void testSetup()
 {
-  pinMode(BTN_SEEK_UP, INPUT);
-  pinMode(BTN_SEEK_DOWN, INPUT);
-  pinMode(BTN_MHZ_DOWN, INPUT);
-  pinMode(BTN_MHZ_UP, INPUT);
-  pinMode(BTN_DISABLE_LEVEL, INPUT);
-  pinMode(OUTPUT_NPN, OUTPUT);
-  digitalWrite(OUTPUT_NPN, 0);
+  // pinMode(DIP_1, INPUT_PULLUP);
+  // pinMode(DIP_2, INPUT_PULLUP);
+  // pinMode(DIP_3, INPUT_PULLUP);
+  // pinMode(DIP_4, INPUT_PULLUP);
+  // digitalWrite(DIP_1, HIGH);
+  // digitalWrite(DIP_2, HIGH);
+  // digitalWrite(DIP_3, HIGH);
+  // digitalWrite(DIP_4, HIGH);
 }
 
 void testLoop()
 {
 
-  int seekDownState = digitalRead(BTN_SEEK_DOWN);
-  int seekUpState = digitalRead(BTN_SEEK_UP);
-  int mhzDownState = digitalRead(BTN_MHZ_DOWN);
-  int mhzUpState = digitalRead(BTN_MHZ_UP);
-  int sleepState = digitalRead(BTN_DISABLE_LEVEL);
+  // int dip1 = digitalRead(DIP_1);
+  // int dip2 = digitalRead(DIP_2);
+  // int dip3 = digitalRead(DIP_3);
+  // int dip4 = digitalRead(DIP_4);
+
+  // float npo1 = 93.3;
+  // float npo2 = 88.0;
+  // float npo3 = 88.6;
+  // float r538 = 102.2;
+  // float veronica = 103.4;
+  // float simone = 92.9;
+  // float noord = 97.5;
+
+  // float stations[] = {npo1, npo2, npo3, r538, veronica, simone, noord};
+
+  // int dip = dip2 << 2 | dip3 << 1 | dip4;
+  // if (dip != lastDip)
+  // {
+  //   Serial.printf("Set station to %d (%f0.1)\n", dip, stations[dip]);
+  //   fmRadio->setFrequency(stations[dip]);
+  //   lastDip = dip;
+  // }
+
+  // fmRadio->setFrequency(stations[dip]);
+  // sleep(2);
+  // dip++;
+  // if (dip == 8)
+  // {
+  //   dip = 0;
+  // }
+
   // levelEnabled = !digitalRead(OUTPUT_NPN);
-  isSeeking = seekDownState || seekUpState || mhzDownState || mhzUpState;
-  levelEnabled = !sleepState;
+  // isSeeking = seekDownState || seekUpState || mhzDownState || mhzUpState;
+  // levelEnabled = !sleepState;
   // if (levelEnabled != sleepState)
   // {
   //   levelEnabled = sleepState;
   //   // fmRadio->setSleep(sleeping);
   // }
-  if (isSeeking)
-  {
-    // levelEnabled = false;
-    if (seek_timeout == 0)
-    {
-      seek_timeout++;
-      Serial.println("Seeking...");
-      Serial.print(seekDownState);
-      Serial.print(seekUpState);
-      Serial.print(mhzDownState);
-      Serial.println(mhzUpState);
-      frequency = fmRadio->getFrequency();
-      // Serial.println(sleepState);
-      if (seekDownState == HIGH)
-      {
-        fmRadio->scanDown(frequency);
-      }
-      else if (seekUpState == HIGH)
-      {
-        fmRadio->scanUp(frequency);
-      }
-      else if (mhzDownState == HIGH)
-      {
-        fmRadio->setFrequency(frequency - 0.1);
-      }
-      else if (mhzUpState == HIGH)
-      {
-        fmRadio->setFrequency(frequency + 0.1);
-      }
-    }
-    else if (seek_timeout == SEEK_TIMEOUT)
-    {
-      seek_timeout = 0;
-      // levelEnabled = true;
-    }
-  }
-  else
-  {
-    seek_timeout = 0;
-    // levelEnabled = true;
-  }
+  // if (isSeeking)
+  // {
+  //   // levelEnabled = false;
+  //   if (seek_timeout == 0)
+  //   {
+  //     seek_timeout++;
+  //     Serial.println("Seeking...");
+  //     Serial.print(seekDownState);
+  //     Serial.print(seekUpState);
+  //     Serial.print(mhzDownState);
+  //     Serial.println(mhzUpState);
+  //     frequency = fmRadio->getFrequency();
+  //     // Serial.println(sleepState);
+  //     if (seekDownState == HIGH)
+  //     {
+  //       fmRadio->scanDown(frequency);
+  //     }
+  //     else if (seekUpState == HIGH)
+  //     {
+  //       fmRadio->scanUp(frequency);
+  //     }
+  //     else if (mhzDownState == HIGH)
+  //     {
+  //       fmRadio->setFrequency(frequency - 0.1);
+  //     }
+  //     else if (mhzUpState == HIGH)
+  //     {
+  //       fmRadio->setFrequency(frequency + 0.1);
+  //     }
+  //   }
+  //   else if (seek_timeout == SEEK_TIMEOUT)
+  //   {
+  //     seek_timeout = 0;
+  //     // levelEnabled = true;
+  //   }
+  // }
+  // else
+  // {
+  //   seek_timeout = 0;
+  //   // levelEnabled = true;
+  // }
 }
 
 void setup()
 {
   Serial.begin(115200);
-  // testSetup();
+  testSetup();
   // i2cAddressSetup(26, 25, 0);
   // i2cAddressSetup(21, 22, 0);
   pinMode(2, OUTPUT);
@@ -159,7 +187,7 @@ void loop()
   // read_sensors();
   dataOut.clear();
   digitalWrite(2, LOW);
-  // testLoop();
+  testLoop();
   if (deviceConnected)
   {
     digitalWrite(2, HIGH);

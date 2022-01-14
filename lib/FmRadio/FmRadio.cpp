@@ -29,8 +29,6 @@ void FmRadio::setup(int pin)
 {
     Wire.begin();
     EEPROM.begin(5);
-    Serial.print("Setting pin to ");
-    Serial.println(pin);
     PIN = pin;
     pllFromEeprom = EEPROM.readInt(0);
     setFrequency(PLLToMhz(pllFromEeprom));
@@ -99,12 +97,11 @@ void FmRadio::i2cRead()
     for (int i = 0; i < 5; i++)
     {
         response[i] = Wire.read();
-        Serial.println(response[i], HEX);
+        // Serial.println(response[i], HEX);
     }
 
     // Strip off first two bits, add byte b
     pll = (response[0] & 0x3f) << 8 | response[1];
-    Serial.printf("%d, %.2f\n", pll, PLLToMhz(pll));
     delay(OUTPUT_DELAY);
     digitalWrite(PIN, 0);
 }
@@ -115,7 +112,6 @@ void FmRadio::i2cWrite(byte a, byte b, byte c, byte d, byte e)
     storeCounter = 0;
     scanCounter = 0;
     scanTimeout = SCAN_TIMEOUT_SHORT;
-    Serial.print("x");
     digitalWrite(PIN, 1);
     delay(OUTPUT_DELAY);
     Wire.beginTransmission(TEA_ADDR);
@@ -128,7 +124,6 @@ void FmRadio::i2cWrite(byte a, byte b, byte c, byte d, byte e)
 
     delay(OUTPUT_DELAY);
     digitalWrite(PIN, 0);
-    Serial.println("o");
 }
 
 void FmRadio::scan(double mhz, bool dir)
@@ -157,6 +152,7 @@ void FmRadio::setFrequency(double mhz)
     byte a, b;
     a = newPll >> 8;
     b = newPll & 0xFF;
+    Serial.printf("%02x %02x 0x10 0x10 0x40", a, b);
     i2cWrite(a, b, 0x10, 0x10, 0x40);
 }
 
