@@ -33,7 +33,7 @@ static std::vector<byte> dataOut;
 const int OUTPUT_LEVEL = 0;
 const int OUTPUT_FM = 1;
 
-const int OUTPUT_LEVEL_INTERVAL = 200;
+const int OUTPUT_LEVEL_INTERVAL = 100;
 int output_mode = OUTPUT_LEVEL;
 int output_interval = OUTPUT_LEVEL_INTERVAL;
 int output_counter = 0;
@@ -137,14 +137,13 @@ void loop()
       int8_t roll = lvlSensor->readRoll();
       int8_t incline = lvlSensor->readIncline();
 
-      // Serial.printf("%d, %d, %d\n", pitch, roll, incline);
-      // dataOut.clear();
-      // dataOut.push_back(pitch);
-      // dataOut.push_back(roll);
-      // dataOut.push_back(incline);
-      // dataOut.push_back(0);
-      // dataOut.push_back(0x01);
-      // writeOut = true;
+      dataOut.clear();
+      dataOut.push_back(pitch);
+      dataOut.push_back(roll);
+      dataOut.push_back(incline);
+      dataOut.push_back(0);
+      dataOut.push_back(0x01);
+      writeOut = true;
     }
   }
   // }

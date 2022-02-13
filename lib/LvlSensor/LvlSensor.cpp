@@ -7,21 +7,21 @@
 const int MPU_addr = 0x68;
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
 
-int minVal = 265;
-int maxVal = 402;
+static int minVal = 265;
+static int maxVal = 402;
 
-double x;
-double y;
-double z;
+static double x;
+static double y;
+static double z;
 
-int pitches = 0;
-int rolls = 0;
-int loopCount = 0;
-int inclineCount = 0;
-int roll, pitch, incline;
-const int MAX_INCLINE_COUNT = 1000;
-const int MAX_COUNT = 100;
-float inclines[MAX_INCLINE_COUNT] = {};
+static int pitches = 0;
+static int rolls = 0;
+static int loopCount = 0;
+static int inclineCount = 0;
+static int roll, pitch, incline;
+static const int MAX_INCLINE_COUNT = 1000;
+static const int MAX_COUNT = 100;
+static float inclines[MAX_INCLINE_COUNT] = {};
 
 static int8_t offsetX, offsetY;
 static bool invertX, invertY;
@@ -69,18 +69,16 @@ void LvlSensor::loop()
     if (loopCount == MAX_COUNT)
     {
         pitches /= MAX_COUNT;
-        if (pitches > 180)
+        if (pitches >= 180)
         {
             pitches -= 360;
         }
 
         rolls /= MAX_COUNT;
-        if (rolls > 180)
+        if (rolls >= 180)
         {
             rolls -= 360;
         }
-
-        Serial.printf("pitches: %d, rolls: %d, incline: %d\n", pitches, rolls, getIncline());
 
         pitch = clamp(pitches, -127, 127);
         roll = clamp(rolls, -127, 127);
